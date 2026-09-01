@@ -1,14 +1,14 @@
-# TUI Design Principle
+# VTP — Vulcan's TUI Design Principle
 
 一份跨 TUI app 的通用設計原則、獨立於任何 K8s / Bubble Tea / Lipgloss 等
-特定領域或框架。
+特定領域或框架。本文件即 **VTP** 的正式定義。
 
 本文件回答的問題是：**「在一個 terminal UI 上、什麼樣的設計能讓使用者
-不靠文件就能用？」** ZLC（Zero Learning Curve）是核心目標、其他章節是
-支撐 ZLC 的周邊規範。
+不靠文件就能用？」** VTP 是這個問題的答案 —— §A 定義 VTP 的核心目標與
+量化 score、其他章節是支撐 VTP 的周邊規範。
 
 > 本文件是 **interface**。某個 app 怎麼具體 implement、寫在它自己的
-> implementation doc 裡（範例：`kbu-zlc-implementation.md`）。
+> implementation doc 裡（範例：`kbu-implementation.md`、`filu-implementation.md`）。
 
 ---
 
@@ -41,7 +41,7 @@ surface 主要指 **panel 與 popup**。Statusbar / footer 等持續性顯示區
 
 ### Focus
 
-**使用者當下能直接操作的 UI 位置**。Focus 是 ZLC、互動規則、popup 規則等
+**使用者當下能直接操作的 UI 位置**。Focus 是 VTP、互動規則、popup 規則等
 多條原則的共同基礎、必須先定義清楚。
 
 Focus 有兩個層次：
@@ -63,33 +63,33 @@ Focus 有兩個層次：
 內的動作。多為 app-level 的全域動作。例：切換全域 sub-window、開啟設定、
 退出 app。
 
-這個區分在 ZLC 的範圍判定（§A）反覆使用。
+這個區分在 VTP 的範圍判定（§A）反覆使用。
 
 ---
 
 ## 核心設計哲學
 
-底下兩條是本文件的最頂層 — 一條規範**目標**（ZLC）、一條規範**機制**（專
+底下兩條是本文件的最頂層 — 一條規範**目標**（VTP）、一條規範**機制**（專
 職化）。七大分類底下所有規則、都是為了支撐這兩條而展開。
 
-### §A. ZLC（Zero Learning Curve）— 基礎操作貫穿全 app
+### §A. VTP 核心 — 基礎操作貫穿全 app
 
 **目標**：使用者**不需要看文件、不需要記憶 hotkey**、靠一套**跨 surface
 不變的基礎操作**就能用完整個 app。學新 surface 時不用重新學「這個 surface
 裡 Enter 是什麼意思 / Esc 又是什麼意思」、所有 surface 共用同一套基礎語
 意、學一次走遍 app。
 
-ZLC 是**目標**、不是某個特定 key 或某個特定 UI。User 在 app 內遇到的動作
-分兩種性質、ZLC **同時涵蓋兩種**、各用一個 core-key 入口列出該類動作：
+VTP 是**目標**、不是某個特定 key 或某個特定 UI。User 在 app 內遇到的動作
+分兩種性質、VTP **同時涵蓋兩種**、各用一個 core-key 入口列出該類動作：
 
 | Track | 動作性質 | 典型例子 | core-key 入口 |
 |---|---|---|---|
 | **Contextual** | 作用對象在當前 focus 範圍內 | 對 cursor row 做檢視 / 編輯；對當前 panel 做排序 / 過濾 | 典型 `Space`、列出當前 focus 能做的事（§A.1） |
 | **Non-contextual** | 作用對象不歸任何 focus 管、屬 app 全域 | 切換 namespace / context、開設定、退出 | 典型 `?`、列出 app 所有全域動作（§A.2） |
 
-兩條 track 都**屬於 ZLC**、各有自己的 core-key 入口、**結構對稱**。不
+兩條 track 都**屬於 VTP**、各有自己的 core-key 入口、**結構對稱**。不
 能用其中一條的手法去蓋另一條的需求 — contextual 動作擠進 §A.2 入口、
-或 non-contextual 動作擠進 §A.1 入口、兩種都會壞 ZLC。
+或 non-contextual 動作擠進 §A.1 入口、兩種都會壞 VTP。
 
 判準：
 
@@ -97,27 +97,27 @@ ZLC 是**目標**、不是某個特定 key 或某個特定 UI。User 在 app 內
 > - 有、且對象在當前 focus 內 → **contextual** → §A.1
 > - 無作用對象、或對象不在當前 focus 內 → **non-contextual** → §A.2
 
-#### §A.0 ZLC score — ZLC 是百分比分數、不是 binary
+#### §A.0 VTP score — VTP 是百分比分數、不是 binary
 
-ZLC 不是「有 / 沒有」、是 0%-100% 的連續分數。每個 app 都落在這條軸上
+VTP 不是「有 / 沒有」、是 0%-100% 的連續分數。每個 app 都落在這條軸上
 某個位置：
 
 - **100%**：完全不用事先學、第一次開 app 就能完成所有動作
 - **0%**：不先學根本無法使用、任何動作都要事先讀文件
 
-ZLC score 越高 = 越 user-friendly、越低 = user 學習成本越高。
+VTP score 越高 = 越 user-friendly、越低 = user 學習成本越高。
 
-**ZLC score 由兩個設計可控軸合成**：
+**VTP score 由兩個設計可控軸合成**：
 
 | 軸 | 性質 | 定義 | 範圍 |
 |---|---|---|---|
 | **X. 揭露程度**（disclosure ratio）| 設計軸 | `X = user 透過 core-key 入口可以明確看到的操作數 ÷ app 包含的全部操作數` | [0, 1] |
 | **Y. core-key role 數量** | 設計軸 | `Y = \|contextual core-key role ∪ non-contextual core-key role\|`（兩條 track 用到的 role 聯集大小、alias 共用 role 算 1 個）| [1, ∞) |
 
-**ZLC score 公式**：
+**VTP score 公式**：
 
 ```
-ZLC score = X × min(1, 5/Y) × 100%
+VTP score = X × min(1, 5/Y) × 100%
 ```
 
 兩個因子的意義：
@@ -166,24 +166,24 @@ user 學一次「Y view YAML」全套通用 → 算 **1 個 action**、不論 co
 breadth — 避免 framework 被 implementation 數量綁架（例：app 加 1 個新
 resource type 不該讓 X 突然掉、因為 user 沒多學任何東西）。
 
-X 跟 Y 任一條低、ZLC 都會掉。設計者只能調這兩個軸、score 自動算出來。
+X 跟 Y 任一條低、VTP 都會掉。設計者只能調這兩個軸、score 自動算出來。
 
 **對照例**：
 
-| App | X 揭露 | Y core-key | min(1, 5/Y) | ZLC score |
+| App | X 揭露 | Y core-key | min(1, 5/Y) | VTP score |
 |---|:---:|:---:|:---:|:---:|
 | **kbu** (entry-key + interactive menu)| 1.0 | 5 | 1.0 | **100%** |
 | **nano** (ambient cheatsheet 永久揭露 + `^G` 補)| ~1.0 | ~5 | 1.0 | **~100%** |
 | **vim 默認** (prompt-style、不揭露) | 0（`:` 給空 prompt、揭露 0 個 action；`:help` 要先學才能用）| 海量、設 ~30 | 0.167 | **0%** |
 
-**kbu vs nano vs vim — ZLC vs 其他 dimension 的分離**：
+**kbu vs nano vs vim — VTP vs 其他 dimension 的分離**：
 
-kbu 跟 nano 在 ZLC 上**幾乎同分**（都 ~100%）— user 一打開都能用、不需
-事先讀 README。差別在 design polish、不在 ZLC：
+kbu 跟 nano 在 VTP 上**幾乎同分**（都 ~100%）— user 一打開都能用、不需
+事先讀 README。差別在 design polish、不在 VTP：
 
 | | kbu | nano | vim |
 |---|---|---|---|
-| ZLC | ~100% | ~100% | 0% |
+| VTP | ~100% | ~100% | 0% |
 | 揭露策略 | entry-key + interactive menu（`j/k` 選 + Enter execute）| ambient cheatsheet 永久顯示 + `^G` 補 hidden | 無揭露（`:` 是 prompt、不是 cheatsheet） |
 | Hotkey 是否 mandatory | optional（`j/k` + Enter 可 bypass）| optional（即時學就能用） | mandatory（沒揭露、必須事先學）|
 | Context-awareness | menu 跟 cursor 對齊、只列當下能做的 | screen-bottom 永遠列全部 | N/A |
@@ -191,39 +191,39 @@ kbu 跟 nano 在 ZLC 上**幾乎同分**（都 ~100%）— user 一打開都能�
 | Target user | DevOps / SRE | 一次性 / 偶爾用 | 長期投資、把 editor 當第二母語 |
 
 kbu vs nano 的真正差別在 **context-awareness / 介面整潔 / 學會後加速空
-間**、這些都是 design polish、**不在 ZLC 規範內**。
+間**、這些都是 design polish、**不在 VTP 規範內**。
 
 ---
 
-**ZLC 是可疊加 layer — 揭露機制跟 app core 可分離**：
+**VTP 是可疊加 layer — 揭露機制跟 app core 可分離**：
 
-ZLC score 由揭露機制決定、不必 hard-coded 到 app core。同一個 app
-core、加上「ZLC layer」（which-key / command palette / interactive
-menu plugin 等）、ZLC score 就能大幅提升 — app 功能不變、只是揭露
+VTP score 由揭露機制決定、不必 hard-coded 到 app core。同一個 app
+core、加上「VTP layer」（which-key / command palette / interactive
+menu plugin 等）、VTP score 就能大幅提升 — app 功能不變、只是揭露
 管道改善。
 
 **vim + LazyVim / which-key 案例**：
 
-| 階段 | vim core 功能 | 揭露機制 | ZLC score |
+| 階段 | vim core 功能 | 揭露機制 | VTP score |
 |---|---|---|---|
 | **vim 默認** | 海量 motion / edit / ex command | `:` prompt（不揭露）| **0** |
 | **vim + which-key**（LazyVim 預設）| 同上、core 完全沒動 | `<leader>` prefix + popup 列出當前能按的所有 binding（典型 §A.1 entry-key + interactive menu pattern）| **接近 100%** |
 
-vim core 一字未動、LazyVim 在 vim 上**疊加了一個 ZLC layer**、score
-從 0 跳到接近 100。這驗證 ZLC 跟 app core 是兩件事、可分離。
+vim core 一字未動、LazyVim 在 vim 上**疊加了一個 VTP layer**、score
+從 0 跳到接近 100。這驗證 VTP 跟 app core 是兩件事、可分離。
 
 **Implication**：
 
-- ZLC 不必 hard-coded 在 app core、可以是 plugin layer
-- 設計者可以做「ZLC plugin」、套到任何既有 app 上補強 ZLC
+- VTP 不必 hard-coded 在 app core、可以是 plugin layer
+- 設計者可以做「VTP plugin」、套到任何既有 app 上補強 VTP
 - 同 framework 適用兩種角度的設計者：
 
 | 角度 | 目標 |
 |---|---|
-| **App / framework 設計者** | 設計時把 ZLC layer 直接 build-in（如 kbu Space menu / `?` help）|
-| **Plugin / distro 設計者** | 在 ZLC = 0 的 app 上補 ZLC layer（如 LazyVim 在 vim 上補 which-key）|
+| **App / framework 設計者** | 設計時把 VTP layer 直接 build-in（如 kbu Space menu / `?` help）|
+| **Plugin / distro 設計者** | 在 VTP = 0 的 app 上補 VTP layer（如 LazyVim 在 vim 上補 which-key）|
 
-- 評斷 app ZLC 時、要明確是「**default state**」還是「**+ ZLC layer**」
+- 評斷 app VTP 時、要明確是「**default state**」還是「**+ VTP layer**」
   — 同一個 app core 兩種 state 分數可以天差地遠（vim 0% vs vim+LazyVim
   ~100%）。
 
@@ -231,16 +231,16 @@ vim core 一字未動、LazyVim 在 vim 上**疊加了一個 ZLC layer**、score
 
 **重要 framework 邊界**：
 
-> **「熱鍵的易用性」(hotkey ergonomics) 不在 ZLC 規範範圍內。**
+> **「熱鍵的易用性」(hotkey ergonomics) 不在 VTP 規範範圍內。**
 
-ZLC 只規範「**user 能不能不靠事先學習就 reach 並 execute 操作**」— 不
+VTP 只規範「**user 能不能不靠事先學習就 reach 並 execute 操作**」— 不
 論 user 是透過：
 
 - **0-學習 execute**：`j/k` 選 + Enter execute（kbu §A.1 interactive menu）
 - **即時學 + execute**：看 cheatsheet 看到 hotkey → 立刻按 hotkey
   execute（nano screen-bottom、kbu §A.2 `?` help popup）
 
-只要 user 不需要事先讀 README、流程能在 app 內走完、都算 ZLC 友善。
+只要 user 不需要事先讀 README、流程能在 app 內走完、都算 VTP 友善。
 
 至於這些 hotkey **好不好按**（單 key vs chord vs 三 key chord）、**記
 不記得住**、**要不要分 mode**、**有沒有 motion composability** — 全
@@ -249,30 +249,30 @@ ZLC 只規範「**user 能不能不靠事先學習就 reach 並 execute 操作**
 
 ---
 
-**ZLC 高 ≠ 好 app**、**ZLC 低 ≠ 爛 app** — ZLC 只是「不需事先學習就
+**VTP 高 ≠ 好 app**、**VTP 低 ≠ 爛 app** — VTP 只是「不需事先學習就
 能用」這個 dimension 的度量、跟其他 dimension（hotkey ergonomics、
 context-awareness、學會後效率、composability、肌肉記憶投資 ROI、…）
 獨立。
 
-本框架是給「**想要高 ZLC**」的 app 設計者用的 — 確認自己的設計選擇真
-的拿到了想要的 ZLC 分數、而不是有意識的覺得「我 app ZLC 高」但實際算
-出來是 0。如果設計者明白選擇「ZLC 低、其他維度高」（如 vim）、本框架
+本框架是給「**想要高 VTP**」的 app 設計者用的 — 確認自己的設計選擇真
+的拿到了想要的 VTP 分數、而不是有意識的覺得「我 app VTP 高」但實際算
+出來是 0。如果設計者明白選擇「VTP 低、其他維度高」（如 vim）、本框架
 也能幫忙確認「沒選錯邊」。
 
 
-**ZLC score 的反向表達**：
+**VTP score 的反向表達**：
 
-「user 事前認知門檻」是 ZLC score 的反面、同一件事不同方向看：
+「user 事前認知門檻」是 VTP score 的反面、同一件事不同方向看：
 
 ```
-事前認知門檻 = 100% − ZLC score
+事前認知門檻 = 100% − VTP score
 ```
 
-事前認知門檻 = 0 ↔ ZLC = 100%；事前認知門檻 = 100% ↔ ZLC = 0。設計者
-不需要單獨度量它、它跟 ZLC score 是同一個數字。寫進這份 doc 是因為某些
-情境下「user 還要學多少」比「ZLC 多少」更直觀。
+事前認知門檻 = 0 ↔ VTP = 100%；事前認知門檻 = 100% ↔ VTP = 0。設計者
+不需要單獨度量它、它跟 VTP score 是同一個數字。寫進這份 doc 是因為某些
+情境下「user 還要學多少」比「VTP 多少」更直觀。
 
-**ZLC 100% 不是強制目標** — 設計者要意識到自己的 app 落在哪、為什麼是
+**VTP 100% 不是強制目標** — 設計者要意識到自己的 app 落在哪、為什麼是
 這個分數、是不是有意識的取捨（如 vim）。
 
 #### §A.0.Y Y 軸規範：core-key 集合 ≤ 5 個
@@ -281,8 +281,8 @@ context-awareness、學會後效率、composability、肌肉記憶投資 ROI、�
 鼠標的 5 個 button（左鍵 / 右鍵 / 中鍵 / 滾輪上 / 滾輪下）是這個上限的
 物理類比 — **單一操作介面就應該能貫穿整個 app**。
 
-Y ≤ 5 不是美學取捨、是 ZLC 的物理可行性：超過 5、user 同時握不住、就要
-回去翻 cheatsheet、Z 上升、ZLC 線性掉。
+Y ≤ 5 不是美學取捨、是 VTP 的物理可行性：超過 5、user 同時握不住、就要
+回去翻 cheatsheet、Z 上升、VTP 線性掉。
 
 典型 keyboard core-key 集合（example、非規範）：
 
@@ -332,17 +332,17 @@ entry key」。這個前提**對 §A.1 跟 §A.2 entry key 都適用**。
 > 上做完該 focus 的所有 contextual 動作。
 
 如果某個 contextual 動作**只能用 letter hotkey 觸發**、入口沒列、就是
-ZLC 破洞 — 新使用者按入口找不到、必須去學 hotkey、違反「不需看文件就
+VTP 破洞 — 新使用者按入口找不到、必須去學 hotkey、違反「不需看文件就
 能用」的承諾。
 
 **常見誤判**:「便利 vs 必要」不是這條 track 的判斷軸：
 
 設計者很容易直覺地用「這是 app 主功能還是便利附加？」當「動作要不要進入
-口」的判斷標準 — 主功能進、便利附加不進。這個直覺錯的、會反過來破壞 ZLC：
+口」的判斷標準 — 主功能進、便利附加不進。這個直覺錯的、會反過來破壞 VTP：
 
 - 動作即使是「便利附加」（缺它 app 還能完成本質目的）、只要它作用在當前
   focus 上、就是 contextual、**必須**進入口。否則 user 找不到、必須去學
-  hotkey、ZLC 破洞。
+  hotkey、VTP 破洞。
 - 反之、即使是必要的全域 toggle、也**不**進入口、因為它不歸任何 focus
   管 — 它走 §A.2、不走 §A.1。
 
@@ -352,7 +352,7 @@ ZLC 破洞 — 新使用者按入口找不到、必須去學 hotkey、違反「�
 
 App 在開發過程中、會出現某些**必要但無法歸進 focus 上下文**的動作 — 全
 域 toggle、模式切換、settings、help、quit 等。這些動作存在的理由是 app
-的彈性需要、ZLC 不會也不該排除它們、但**它們不能擠進 §A.1 入口**（不歸
+的彈性需要、VTP 不會也不該排除它們、但**它們不能擠進 §A.1 入口**（不歸
 任何 focus 管、塞進去會稀釋當前 focus 的動作清單、user 找不到「我現在能
 對 focus 做什麼」）。
 
@@ -367,25 +367,25 @@ App 在開發過程中、會出現某些**必要但無法歸進 focus 上下文*
 > 能找到 app 提供的全部全域動作。
 
 如果某個全域動作只在某個特定 surface 才能觸發（或只能用隱藏 hotkey 觸
-發、§A.2 入口找不到）、就是 §A.2 ZLC 破洞。
+發、§A.2 入口找不到）、就是 §A.2 VTP 破洞。
 
 **揭露分兩層、分清強制 vs optional**：
 
 | 層 | 內容 | 強制 / Optional |
 |---|---|---|
 | Layer 1 | **Entry key 自身的揭露**（user 知道 `?` 能按）| **強制**（同 §A.1 前提、不揭露 = X = 0）|
-| Layer 2 | **個別全域動作的 ambient 揭露**（在 statusbar / footer / chip 等位置額外持續顯示個別動作的存在）| **Optional**（加分項、不影響 ZLC 完整性）|
+| Layer 2 | **個別全域動作的 ambient 揭露**（在 statusbar / footer / chip 等位置額外持續顯示個別動作的存在）| **Optional**（加分項、不影響 VTP 完整性）|
 
 - **Layer 1（強制）**：entry key (`?`) 自身要 user-discoverable、形式
   自由 — footer / sidebar / onboarding / 遞迴從別的 entry 揭露 / ...。
-  如果 user 不知道 `?` 能按、就跟 vim `:` 同處境（X = 0、ZLC = 0）、
+  如果 user 不知道 `?` 能按、就跟 vim `:` 同處境（X = 0、VTP = 0）、
   不論 `?` 按下後揭露多完整都救不回來。
 - **Layer 2（optional）**：個別全域動作的持續揭露（如「N: namespace」
   chip、「Alt-t: shell」chip）是 app 自選的加分項、增加 user 對個別動
-  作的 ambient awareness、但不影響 ZLC 完整性。即使全部拿掉、user 透過
+  作的 ambient awareness、但不影響 VTP 完整性。即使全部拿掉、user 透過
   `?` 仍能找到全部全域動作。
 
-#### 兩條 track 加起來才是完整的 ZLC
+#### 兩條 track 加起來才是完整的 VTP
 
 - **§A.0.Y 保證**：core-key 總數 ≤ 5、user 同時握得住
 - **§A.1 保證**：當前 focus 上下文裡所有能做的事、user 從 §A.1 core-key
@@ -394,7 +394,7 @@ App 在開發過程中、會出現某些**必要但無法歸進 focus 上下文*
   找得到
 
 三條合起來、就達成「沒看過 README 的 user 在任何 surface、學 ≤ 5 個 key
-就能完成 app 支援的所有動作」這個 ZLC 承諾。
+就能完成 app 支援的所有動作」這個 VTP 承諾。
 
 衍生規則：
 
@@ -419,7 +419,7 @@ App 在開發過程中、會出現某些**必要但無法歸進 focus 上下文*
 - 符號位置被「類型訊號」訂走、不能拿來當純裝飾 — 一旦兼職、類型訊號就
   失去信號強度
 
-破壞專職化的代價是「使用者要學多套規則」、跟 ZLC 直接衝突。
+破壞專職化的代價是「使用者要學多套規則」、跟 VTP 直接衝突。
 
 ---
 
@@ -582,7 +582,7 @@ fallback 最不容易掉 box** 的子集。具體哪個子集屬於 icon font �
 | `?` | §A.2 non-contextual 入口 | §A.2 |
 
 要選哪幾個鍵、各鍵綁什麼語意、是 app 設計選擇。**絕對的部分是「選定後
-跨 surface 不變、且總數 ≤ 5」**、否則使用者基本導航就壞了、ZLC 立刻破洞。
+跨 surface 不變、且總數 ≤ 5」**、否則使用者基本導航就壞了、VTP 立刻破洞。
 
 ### 4.2 Letter hotkey ⊆ here-can-do-what 入口（完整性原則）
 
@@ -591,7 +591,7 @@ fallback 最不容易掉 box** 的子集。具體哪個子集屬於 icon font �
 
 > 一個沒看過 letter hotkey 的新使用者、光靠 here-can-do-what 入口應該能在
 > 每個 focus 上做完該 focus 的所有 contextual 動作。如果某個 contextual
-> 動作只能用 letter hotkey 觸發、入口沒列、那就是 ZLC 破洞。
+> 動作只能用 letter hotkey 觸發、入口沒列、那就是 VTP 破洞。
 
 也就是：
 
@@ -620,7 +620,7 @@ toast 也算）按下這個 key 都必須立即關閉、使用者沒有等動畫
 
 重點：**一旦選定、跨 surface 絕對不變**。如果某個浮層用一個 key 取消、
 另一個浮層用別的 key 取消、就違反 §4.1 core key 跨 surface 一致、user
-必須 case-by-case 記、ZLC 破洞。
+必須 case-by-case 記、VTP 破洞。
 
 ### 4.4 Hotkey discoverability 標記方式
 
@@ -796,7 +796,7 @@ glance UX 是兩個不同目標、規則該擴充而非壓掉 streaming。
 
 這套原則的層次：
 
-1. **核心設計哲學**（§A / §B）— ZLC 是目標、專職化是機制。底下所有規則
+1. **核心設計哲學**（§A / §B）— VTP 是目標、專職化是機制。底下所有規則
    都是這兩條的展開。
 2. **七大分類**（§1~§7）— UI / UX / 互動的具體規範。
 3. **跨類觀察**：

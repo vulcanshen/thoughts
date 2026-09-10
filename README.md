@@ -9,7 +9,7 @@ Vulcan's design thoughts and notes.
 
 ## Topics
 
-### [tui-design](tui-design/) — VTP, Vulcan's TUI Design Principle
+### [tui-design](tui-design/) — VTP, My TUI Design Principle
 
 回答的問題：**「在一個 terminal UI 上、什麼樣的設計能讓使用者不靠文件就
 能用？」**

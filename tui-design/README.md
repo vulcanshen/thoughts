@@ -1,4 +1,4 @@
-# VTP — Vulcan's TUI Design Principle
+# VTP — My TUI Design Principle
 
 一份跨 TUI app 的通用設計原則、獨立於任何 K8s / Bubble Tea / Lipgloss 等
 特定領域或框架。本文件即 **VTP** 的正式定義。

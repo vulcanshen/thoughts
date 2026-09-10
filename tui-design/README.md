@@ -5,10 +5,11 @@
 
 本文件回答的問題是：**「在一個 terminal UI 上、什麼樣的設計能讓使用者
 不靠文件就能用？」** VTP 是這個問題的答案 —— §A 定義 VTP 的核心目標與
-量化 score、其他章節是支撐 VTP 的周邊規範。
+core-key 語意、其他章節是支撐 VTP 的周邊規範。
 
 > 本文件是 **interface**。某個 app 怎麼具體 implement、寫在它自己的
-> implementation doc 裡（範例：`kbu-implementation.md`、`filu-implementation.md`）。
+> implementation doc 裡（範例：`kbu-implementation.md`、`filu-implementation.md`、
+> `sshu-implementation.md`）。
 
 ---
 
@@ -84,8 +85,8 @@ VTP 是**目標**、不是某個特定 key 或某個特定 UI。User 在 app 內
 
 | Track | 動作性質 | 典型例子 | core-key 入口 |
 |---|---|---|---|
-| **Contextual** | 作用對象在當前 focus 範圍內 | 對 cursor row 做檢視 / 編輯；對當前 panel 做排序 / 過濾 | 典型 `Space`、列出當前 focus 能做的事（§A.1） |
-| **Non-contextual** | 作用對象不歸任何 focus 管、屬 app 全域 | 切換 namespace / context、開設定、退出 | 典型 `?`、列出 app 所有全域動作（§A.2） |
+| **Contextual** | 作用對象在當前 focus 範圍內 | 對 cursor row 做檢視 / 編輯；對當前 panel 做排序 / 過濾 | `Space`、列出當前 focus 能做的事（§A.1） |
+| **Non-contextual** | 作用對象不歸任何 focus 管、屬 app 全域 | 切換 namespace / context、開設定、退出 | `?`、列出 app 所有全域動作（§A.2） |
 
 兩條 track 都**屬於 VTP**、各有自己的 core-key 入口、**結構對稱**。不
 能用其中一條的手法去蓋另一條的需求 — contextual 動作擠進 §A.2 入口、
@@ -97,223 +98,143 @@ VTP 是**目標**、不是某個特定 key 或某個特定 UI。User 在 app 內
 > - 有、且對象在當前 focus 內 → **contextual** → §A.1
 > - 無作用對象、或對象不在當前 focus 內 → **non-contextual** → §A.2
 
-#### §A.0 VTP score — VTP 是百分比分數、不是 binary
+#### §A.0 揭露 — VTP 的唯一機制
 
-VTP 不是「有 / 沒有」、是 0%-100% 的連續分數。每個 app 都落在這條軸上
-某個位置：
+VTP 的達成方式只有一個：**把 user 能做的事揭露出來、讓他不用事先學就
+找得到**。兩件事同時成立才算做到：
 
-- **100%**：完全不用事先學、第一次開 app 就能完成所有動作
-- **0%**：不先學根本無法使用、任何動作都要事先讀文件
+| | 問題 | 沒做到的後果 |
+|---|---|---|
+| **入口被揭露** | User 知不知道有這個 core-key 可以按？ | 入口等於不存在、跟沒有入口同效 |
+| **動作被列出** | 按下入口之後、該 focus / 該 app 能做的事有沒有全部在裡面？ | 沒列出的動作只能靠事先學、VTP 破洞 |
 
-VTP score 越高 = 越 user-friendly、越低 = user 學習成本越高。
+兩者是 **and**、不是 or。入口揭露得再好、按下去只列一半動作、user 仍
+然要去讀文件；動作列得再完整、user 不知道那個鍵能按、那份清單等於不
+存在。
 
-**VTP score 由兩個設計可控軸合成**：
+**「看得到」不等於「揭露」** — 揭露的必須是**可直接執行的動作清單**、
+不是文件。差別在**執行距離**：
 
-| 軸 | 性質 | 定義 | 範圍 |
+| 形式 | 從看到到執行 | 算揭露嗎 |
+|---|---|---|
+| 互動 menu（`j/k` 選 + `Enter` 執行） | 1 步 | ✓ |
+| Ambient cheatsheet（看到鍵、立刻按） | 1 步 | ✓ |
+| In-app 說明文件（讀散文 → 找到指令 → 記住 → 打出來） | 多步、且要記憶 | ✗ |
+
+一個 app 在自己的介面裡附完整說明文件、**仍然不滿足 VTP** —— 「不靠文
+件就能用」正是 VTP 要換到的東西、把文件搬進 app 內不改變 user 要讀文件
+這件事。vim 的 `:help` 是這條的典型反例：它在 app 內、開機畫面也提示了
+它的存在、但它是**文件**、不是動作清單。
+
+#### §A.0.L VTP 是可疊加 layer — 揭露機制跟 app core 可分離
+
+揭露機制不必 hard-coded 到 app core。同一個 app core、疊上一層揭露
+（which-key / command palette / interactive menu plugin 等）、VTP 就能
+大幅改善 —— app 功能一點沒變、只是揭露管道補上了。
+
+**vim + which-key / LazyVim 案例**：
+
+| 階段 | vim core 功能 | 揭露機制 | VTP |
 |---|---|---|---|
-| **X. 揭露程度**（disclosure ratio）| 設計軸 | `X = user 透過 core-key 入口可以明確看到的操作數 ÷ app 包含的全部操作數` | [0, 1] |
-| **Y. core-key role 數量** | 設計軸 | `Y = \|contextual core-key role ∪ non-contextual core-key role\|`（兩條 track 用到的 role 聯集大小、alias 共用 role 算 1 個）| [1, ∞) |
+| **vim 默認** | 海量 motion / edit / ex command | `:` 是空 prompt、不揭露任何動作；`:help` 是文件不是清單 | 幾乎為零 |
+| **vim + which-key**（LazyVim 預設） | 同上、core 完全沒動 | `<leader>` prefix + popup 列出當前能按的所有 binding（典型 §A.1 entry-key + interactive menu pattern） | 接近完整 |
 
-**VTP score 公式**：
-
-```
-VTP score = X × min(1, 5/Y) × 100%
-```
-
-兩個因子的意義：
-
-- `X` — 揭露程度：入口列出多少 = user 不用查就能找到的比例。**分子**
-  是「user 按 §A.1 / §A.2 core-key 入口、能直接看到並執行的操作」；
-  **分母**是「app 提供的所有操作」（包括只能透過 letter hotkey 或外部
-  文件才知道的）。任何「藏起來」的操作都把 X 拉低。
-- `min(1, 5/Y)` — core-key 「同時握得住」係數：Y ≤ 5 時係數 = 1（沒
-  penalty）、Y > 5 時係數 = 5/Y、線性 penalty。鼠標 5 button（左/右
-  /中/滾輪上/滾輪下）是這個上限的物理類比。
-
-**Y 算 role 不算 key — user 學的是概念、不是 binding**：
-
-User 學的單位是 **role**（「取消」「focus 切換」「打開 contextual 入
-口」等概念）、不是 binding 的 key 本身。Y 計算只看 distinct role 數、
-不看 key 數。
-
-| 情境 | 對 Y 的影響 |
-|---|---|
-| 兩條 track 共用同一 role（如「取消」、`Tab` focus 切換）| 聯集算 1 個、不重複計入 |
-| 同一 role 多個 key alias（如 `Esc` 跟 `q` 都做「取消」）| 算 1 個 role、不增加 Y |
-| 新增一個 key 但 role 已存在 | 不增加 Y |
-| 新增一個 key 且 role 是新的 | +1 |
-
-**Alias 完整性條件 — 完整 alias 才算同 role**：
-
-一個 role 綁多個 key alias（如 `Esc` + `q` 都做「取消」）要算同一個
-role、**必須在整個 app 所有 surface 都同樣有效**。如果只在某些 surface
-有效、某些 surface 沒、就是「半套 alias」、不算同 role：
-
-- 完整 alias：`Esc` 跟 `q` 在 main panel、所有 popup、所有 modal、所有
-  surface 都做完全一樣的「取消當前最上層」— Y +0
-- 半套 alias：`q` 只在 main panel 取消、popup 內 `q` 沒效（或做別的事）
-  — user 要學「在哪些 surface `q` 可以、哪些不行」這個額外 conditional
-  rule、等於多學一個概念、**Y 仍然 +1**
-
-跟 §4.1「core-key 跨全 app 一致」對等：alias 也必須跨 surface 一致才
-算同 role、否則破壞 user 「同一個 key 走全 app」的心智模型、反而引入
-「要學的條件」、適得其反。
-
-**Action 粒度 — X 計算的單位**：分子分母都用 **user 學習單位**、不用
-implementation 數量。例：app 對 30 個 resource type 都支援「View YAML」、
-user 學一次「Y view YAML」全套通用 → 算 **1 個 action**、不論 code 內
-部有幾個 switch case。X 計算只看 user-side 學習單位、不看 implementation
-breadth — 避免 framework 被 implementation 數量綁架（例：app 加 1 個新
-resource type 不該讓 X 突然掉、因為 user 沒多學任何東西）。
-
-X 跟 Y 任一條低、VTP 都會掉。設計者只能調這兩個軸、score 自動算出來。
-
-**對照例**：
-
-| App | X 揭露 | Y core-key | min(1, 5/Y) | VTP score |
-|---|:---:|:---:|:---:|:---:|
-| **kbu** (entry-key + interactive menu)| 1.0 | 5 | 1.0 | **100%** |
-| **nano** (ambient cheatsheet 永久揭露 + `^G` 補)| ~1.0 | ~5 | 1.0 | **~100%** |
-| **vim 默認** (prompt-style、不揭露) | 0（`:` 給空 prompt、揭露 0 個 action；`:help` 要先學才能用）| 海量、設 ~30 | 0.167 | **0%** |
-
-**kbu vs nano vs vim — VTP vs 其他 dimension 的分離**：
-
-kbu 跟 nano 在 VTP 上**幾乎同分**（都 ~100%）— user 一打開都能用、不需
-事先讀 README。差別在 design polish、不在 VTP：
-
-| | kbu | nano | vim |
-|---|---|---|---|
-| VTP | ~100% | ~100% | 0% |
-| 揭露策略 | entry-key + interactive menu（`j/k` 選 + Enter execute）| ambient cheatsheet 永久顯示 + `^G` 補 hidden | 無揭露（`:` 是 prompt、不是 cheatsheet） |
-| Hotkey 是否 mandatory | optional（`j/k` + Enter 可 bypass）| optional（即時學就能用） | mandatory（沒揭露、必須事先學）|
-| Context-awareness | menu 跟 cursor 對齊、只列當下能做的 | screen-bottom 永遠列全部 | N/A |
-| 學會後操作效率 | medium | low（沒 motion / macro） | 業界最高 |
-| Target user | DevOps / SRE | 一次性 / 偶爾用 | 長期投資、把 editor 當第二母語 |
-
-kbu vs nano 的真正差別在 **context-awareness / 介面整潔 / 學會後加速空
-間**、這些都是 design polish、**不在 VTP 規範內**。
-
----
-
-**VTP 是可疊加 layer — 揭露機制跟 app core 可分離**：
-
-VTP score 由揭露機制決定、不必 hard-coded 到 app core。同一個 app
-core、加上「VTP layer」（which-key / command palette / interactive
-menu plugin 等）、VTP score 就能大幅提升 — app 功能不變、只是揭露
-管道改善。
-
-**vim + LazyVim / which-key 案例**：
-
-| 階段 | vim core 功能 | 揭露機制 | VTP score |
-|---|---|---|---|
-| **vim 默認** | 海量 motion / edit / ex command | `:` prompt（不揭露）| **0** |
-| **vim + which-key**（LazyVim 預設）| 同上、core 完全沒動 | `<leader>` prefix + popup 列出當前能按的所有 binding（典型 §A.1 entry-key + interactive menu pattern）| **接近 100%** |
-
-vim core 一字未動、LazyVim 在 vim 上**疊加了一個 VTP layer**、score
-從 0 跳到接近 100。這驗證 VTP 跟 app core 是兩件事、可分離。
+vim core 一字未動、LazyVim 在 vim 上**疊加了一個 VTP layer**。這驗證
+VTP 跟 app core 是兩件事、可分離。
 
 **Implication**：
 
 - VTP 不必 hard-coded 在 app core、可以是 plugin layer
-- 設計者可以做「VTP plugin」、套到任何既有 app 上補強 VTP
-- 同 framework 適用兩種角度的設計者：
+- 設計者可以做「VTP plugin」、套到任何既有 app 上補強揭露
+- 同一套 framework 適用兩種角度的設計者：
 
 | 角度 | 目標 |
 |---|---|
-| **App / framework 設計者** | 設計時把 VTP layer 直接 build-in（如 kbu Space menu / `?` help）|
-| **Plugin / distro 設計者** | 在 VTP = 0 的 app 上補 VTP layer（如 LazyVim 在 vim 上補 which-key）|
+| **App / framework 設計者** | 設計時把揭露 layer 直接 build-in（如 Space menu / `?` help） |
+| **Plugin / distro 設計者** | 在沒有揭露的 app 上補一層（如 LazyVim 在 vim 上補 which-key） |
 
-- 評斷 app VTP 時、要明確是「**default state**」還是「**+ VTP layer**」
-  — 同一個 app core 兩種 state 分數可以天差地遠（vim 0% vs vim+LazyVim
-  ~100%）。
+- 評斷一個 app 時要明確是「**default state**」還是「**+ VTP layer**」
+  —— 同一個 app core 兩種 state 可以天差地遠。
 
----
-
-**重要 framework 邊界**：
+#### §A.0.B Framework 邊界 — 什麼不在 VTP 範圍內
 
 > **「熱鍵的易用性」(hotkey ergonomics) 不在 VTP 規範範圍內。**
 
-VTP 只規範「**user 能不能不靠事先學習就 reach 並 execute 操作**」— 不
+VTP 只規範「**user 能不能不靠事先學習就 reach 並 execute 操作**」—— 不
 論 user 是透過：
 
-- **0-學習 execute**：`j/k` 選 + Enter execute（kbu §A.1 interactive menu）
-- **即時學 + execute**：看 cheatsheet 看到 hotkey → 立刻按 hotkey
-  execute（nano screen-bottom、kbu §A.2 `?` help popup）
+- **0-學習 execute**：`j/k` 選 + `Enter` 執行（互動 menu）
+- **即時學 + execute**：看 cheatsheet 看到 hotkey → 立刻按下去
 
-只要 user 不需要事先讀 README、流程能在 app 內走完、都算 VTP 友善。
+只要 user 不需要事先讀 README、流程能在 app 內走完、就滿足 VTP。
 
-至於這些 hotkey **好不好按**（單 key vs chord vs 三 key chord）、**記
-不記得住**、**要不要分 mode**、**有沒有 motion composability** — 全
-都是 hotkey ergonomics、是另一個 dimension、**由其他 framework 規範、
-不在本文件範圍**。
+至於這些 hotkey **好不好按**（單 key vs chord vs 三 key chord）、**記不
+記得住**、**要不要分 mode**、**有沒有 motion composability** —— 全都是
+hotkey ergonomics、是另一個 dimension、**由其他 framework 規範、不在本
+文件範圍**。
 
----
+同理不在範圍內的還有：menu 的 context-awareness（只列當下能做的 vs 永
+遠列全部）、介面整潔度、學會之後的操作加速空間。這些是 design polish、
+影響 app 好不好用、但不影響「不用事先學就能用」這件事。
 
-**VTP 高 ≠ 好 app**、**VTP 低 ≠ 爛 app** — VTP 只是「不需事先學習就
-能用」這個 dimension 的度量、跟其他 dimension（hotkey ergonomics、
-context-awareness、學會後效率、composability、肌肉記憶投資 ROI、…）
-獨立。
+**滿足 VTP ≠ 好 app、不滿足 VTP ≠ 爛 app。** VTP 只是「不需事先學習就
+能用」這一個 dimension 的規範、跟其他 dimension（hotkey ergonomics、學
+會後效率、composability、肌肉記憶投資 ROI…）獨立。有意識地選擇「不走
+VTP、換取其他維度」（如 vim）是合法的設計決定。本框架是給**想要 VTP**
+的設計者用的。
 
-本框架是給「**想要高 VTP**」的 app 設計者用的 — 確認自己的設計選擇真
-的拿到了想要的 VTP 分數、而不是有意識的覺得「我 app VTP 高」但實際算
-出來是 0。如果設計者明白選擇「VTP 低、其他維度高」（如 vim）、本框架
-也能幫忙確認「沒選錯邊」。
+#### §A.0.K Core-key 語意規範
 
+Core-key 是**跨 surface 語意絕對不變**的那組鍵。VTP **不限制 core-key
+的數量**、但**規定表上這幾個鍵的語意**。理由直接來自 VTP 的目標：user
+學的單位是 **role**（「取消」「focus 切換」「打開當前能做什麼」）而不
+是 binding；role 跨 app 一致、user 換一個 app 就不必重學。
 
-**VTP score 的反向表達**：
-
-「user 事前認知門檻」是 VTP score 的反面、同一件事不同方向看：
-
-```
-事前認知門檻 = 100% − VTP score
-```
-
-事前認知門檻 = 0 ↔ VTP = 100%；事前認知門檻 = 100% ↔ VTP = 0。設計者
-不需要單獨度量它、它跟 VTP score 是同一個數字。寫進這份 doc 是因為某些
-情境下「user 還要學多少」比「VTP 多少」更直觀。
-
-**VTP 100% 不是強制目標** — 設計者要意識到自己的 app 落在哪、為什麼是
-這個分數、是不是有意識的取捨（如 vim）。
-
-#### §A.0.Y Y 軸規範：core-key 集合 ≤ 5 個
-
-兩條 track 加起來、user 為了走完 app **需要學的 core-key 不能超過 5 個**。
-鼠標的 5 個 button（左鍵 / 右鍵 / 中鍵 / 滾輪上 / 滾輪下）是這個上限的
-物理類比 — **單一操作介面就應該能貫穿整個 app**。
-
-Y ≤ 5 不是美學取捨、是 VTP 的物理可行性：超過 5、user 同時握不住、就要
-回去翻 cheatsheet、Z 上升、VTP 線性掉。
-
-典型 keyboard core-key 集合（example、非規範）：
-
-| Core-key | 角色 | 對應條款 |
+| Core-key | 語意 | 對應條款 |
 |---|---|---|
-| `Tab` | focus 切換 | §4.1 |
+| `Tab` | focus 切換到下一個 surface | §4.1 |
 | `Enter` | 確認 / 進入 | §4.1 |
-| `Esc`（或 `q` 等取消 key） | 取消 / 關閉 | §4.3 |
-| `Space`（或其他 contextual 入口 key） | §A.1 here-can-do-what 入口 | §A.1 |
-| `?`（或其他 non-contextual 入口 key） | §A.2 全域動作入口 | §A.2 |
+| `Esc` | 取消 / 關閉當前最上層 | §4.3 |
+| `Space` | §A.1 contextual 入口 —— 開 / 關「當前 focus 能做什麼」 | §A.1 |
+| `?` | §A.2 non-contextual 入口 —— 開 / 關「app 全域能做什麼」 | §A.2 |
 
-實際取多少個、設計者自選 — 單 panel app 可能不需要 `Tab`、只用 4 個；
-某 app 把取消跟 quit 合進 `q`、騰一個 slot 出來。重點是**總數 ≤ 5**。
+**規範的是語意、不是清單長度。** App 可以不用到全部（單 panel app 可能
+不需要 `Tab`）、也可以另外指派自己的 core-key（語意自定、但同樣要跨
+surface 不變）。**但表上的鍵不能改語意** —— 把 `Esc` 拿去當「確認」、
+或讓 `Space` 在某個 panel 變成別的動作、破壞的是 user 跨 app 累積起來
+的心智模型。
 
-要再加 core-key 之前先 review：
+**Alias 要完整才算同一個 role。** 一個 role 綁多個 key（如 `Esc` 跟
+`q` 都做「取消」）必須**在整個 app 所有 surface 都同樣有效**：
+
+- **完整 alias**：`Esc` 跟 `q` 在 main panel、所有 popup、所有 modal 都
+  做完全一樣的「取消當前最上層」 —— 合法
+- **半套 alias**：`q` 只在 main panel 取消、popup 內 `q` 沒效（或做別的
+  事）—— user 要多學「在哪些 surface `q` 可以、哪些不行」這條 conditional
+  rule。**這比不做 alias 更糟**：它偽裝成便利、實際上增加了要學的東西
+
+**要新增一個 core-key 之前先 review**：
 
 - 它是不是其實該歸進兩個入口之一（contextual 進 §A.1、global 進 §A.2）？
 - 它是不是 letter hotkey（入口內動作的加速捷徑）就夠了？letter hotkey
-  **不算 core-key**、不佔 5 個 slot
-- 真的非加不可、就要拿掉某個現有 core-key、不能無限擴張
+  **不是** core-key
+- 它的語意跟表上任何一個是不是重疊？重疊就用既有的、不要造第二個
 
-#### §A.1 Contextual 動作 — core-key 入口列當前 focus 能做的事
+#### §A.1 Contextual 動作 — `Space` 入口列當前 focus 能做的事
 
-**手法**：指派一個 core-key（典型 `Space`）作為 contextual 入口。使用
-者迷路時、在當前 focus 按這個 key、跳出**當前能做的事的完整清單**。
-Letter hotkey 是這份清單裡每個動作的加速捷徑、不另算 core-key。
+**手法**：`Space` 是 contextual 入口（§A.0.K）。使用者迷路時、在當前
+focus 按 `Space`、跳出**當前能做的事的完整清單**。Letter hotkey 是這
+份清單裡每個動作的加速捷徑。
+
+**`Space` 是 toggle、不是單向開關**：按 `Space` 開 menu、**再按一次
+`Space` 關掉它**。一個只有單向的入口鍵是陷阱 —— 使用者伸手按同一個鍵
+想出來、結果沒反應。`Esc`（§4.3 取消）同樣必須能關、兩條路都有效。同
+一條規則適用 §A.2 的 `?`（兩條 track 結構對稱）。
 
 **前提 — entry key 自身必須 user-discoverable**：
 
 User 不可能按一個自己不知道存在的 key。Entry key 自身**必須有揭露管
-道**、否則 X = 0（user 找不到入口、跟沒入口同效）。
+道**、否則入口等於不存在（§A.0）。
 
 **揭露管道必須存在**（強制）、**揭露形式自由**（設計者選）。例：
 
@@ -325,6 +246,64 @@ User 不可能按一個自己不知道存在的 key。Entry key 自身**必須�
 
 形式自由的核心是「user 第一次開 app 不靠任何外部知識、能看到至少一個
 entry key」。這個前提**對 §A.1 跟 §A.2 entry key 都適用**。
+
+##### §A.1.1 Menu 依作用對象分區、至少 item / panel 兩塊
+
+Space menu 的內容**依作用對象分區**、至少有這兩個：
+
+| 區塊 | 作用對象 | 典型動作 |
+|---|---|---|
+| **item operation** | 游標指的那**一個** item | 開啟 / 重新命名 / 刪除 / 標記這一列 |
+| **panel operation** | 當前這個 panel（或它的 tab）**整體** | 搜尋 / 排序 / 新增 / 重新整理 / 對整批標記做事 |
+
+- **item region 排在前面**（cursor-first、見 §6.6）：使用者從上往下讀、
+  先看到「對著我選的這個東西我能做什麼」。
+- **每個區塊要有 header 說明它是哪一類**、且**同一個 app 內區塊名稱字
+  串固定**、每個 surface 都用同樣的措辭 —— 措辭不一樣的 menu 會讀成另
+  一**種**選單。
+- **沒有目標就沒有那一區**：空清單沒有 item 動作、那一區整個不出現（連
+  header 一起消失）。這是分區規則的**退化情形**、不是例外。
+- **退化成只剩一區時保持扁平**：只有一類動作時不加 header —— 標題壓在
+  單一群組上是雜訊。
+
+需要更多分區是設計者的自由 —— 但若那批動作不歸當前 focus 管、先確認它
+是不是該走 §A.2、而不是在 §A.1 裡多開一區。
+
+##### §A.1.2 有熱鍵的列要標出來、用 `[]`
+
+Menu 的每一列、**若該動作有 letter hotkey、就把熱鍵用 `[]` 標在列上**；
+**沒有熱鍵可用就不標**，不要為了格式整齊造出假的括號。
+
+- 形式全 app 統一用 bracket：`[r]ename`、`[D]elete`、`[go]to`
+- **bracket 印的就是要按的那個鍵、一字不差、大小寫算數** —— `[A]dd` 是
+  `Shift+A`、裸的 `a` 不是這個綁定。`[t]ransfer` 與 `[T]ransfer all` 是
+  兩個不同動作、分得出來就是因為 bracket 印的大小寫不同
+- 沒有熱鍵的列就只有名稱：例如只能用 `Enter` 執行的列、或**刻意不給熱
+  鍵**的危險動作（不給熱鍵本身就是一種設計選擇）
+
+完整的標記規範見 §4.4。
+
+##### §A.1.3 每一列 = 操作名稱 + 簡易說明
+
+一列有兩半：**左邊是操作名稱（含 `[]` 熱鍵）、右邊是一句簡易說明**。
+
+```
+ item operation
+ [o]pen                      open it with the OS default app
+ [r]ename                                  this item, here
+ [D]elete                          this item, on this host
+ ─────────────────────────────────────────────────────────
+ panel operation
+ [/] Search                        everything under here
+ [A]dd               a file, or name/ for a directory
+```
+
+- **名稱回答「這是什麼動作」、說明回答「它會對什麼做什麼」。** 只有名
+  稱的 menu 會讓使用者在按下去之前無法預期後果 —— 尤其在破壞性動作、
+  以及同一個動詞在不同 focus 意義不同的時候（「刪除」是刪掉檔案、還是
+  取消收藏？）。
+- 說明**簡短、單行**。它是消歧、不是文件；一行寫不下、通常是這個動作
+  的命名有問題。
 
 **完整性原則**：
 
@@ -348,7 +327,7 @@ VTP 破洞 — 新使用者按入口找不到、必須去學 hotkey、違反「�
 
 判斷軸永遠是「**作用對象在不在 focus 範圍**」、不是「重不重要」。
 
-#### §A.2 Non-contextual 動作 — core-key 入口列 app 全域能做的事
+#### §A.2 Non-contextual 動作 — `?` 入口列 app 全域能做的事
 
 App 在開發過程中、會出現某些**必要但無法歸進 focus 上下文**的動作 — 全
 域 toggle、模式切換、settings、help、quit 等。這些動作存在的理由是 app
@@ -358,8 +337,9 @@ App 在開發過程中、會出現某些**必要但無法歸進 focus 上下文*
 
 對這類動作、§A.2 用對稱手法處理：
 
-**指派另一個 core-key**（典型 `?` / `F1` / `Ctrl-K`）作為 non-contextual
-入口。User 在任何 surface 按這個 key、跳出 **app 所有全域動作的完整清單**。
+`?` 是 non-contextual 入口（§A.0.K）。User 在任何 surface 按 `?`、跳出
+**app 所有全域動作的完整清單**；**再按一次 `?` 關掉**（同 §A.1 的 toggle
+規則、兩條 track 結構對稱）。
 
 **完整性原則**：
 
@@ -373,12 +353,12 @@ App 在開發過程中、會出現某些**必要但無法歸進 focus 上下文*
 
 | 層 | 內容 | 強制 / Optional |
 |---|---|---|
-| Layer 1 | **Entry key 自身的揭露**（user 知道 `?` 能按）| **強制**（同 §A.1 前提、不揭露 = X = 0）|
+| Layer 1 | **Entry key 自身的揭露**（user 知道 `?` 能按）| **強制**（同 §A.1 前提、不揭露 = 入口等於不存在）|
 | Layer 2 | **個別全域動作的 ambient 揭露**（在 statusbar / footer / chip 等位置額外持續顯示個別動作的存在）| **Optional**（加分項、不影響 VTP 完整性）|
 
 - **Layer 1（強制）**：entry key (`?`) 自身要 user-discoverable、形式
   自由 — footer / sidebar / onboarding / 遞迴從別的 entry 揭露 / ...。
-  如果 user 不知道 `?` 能按、就跟 vim `:` 同處境（X = 0、VTP = 0）、
+  如果 user 不知道 `?` 能按、就跟 vim `:` 同處境（入口等於不存在）、
   不論 `?` 按下後揭露多完整都救不回來。
 - **Layer 2（optional）**：個別全域動作的持續揭露（如「N: namespace」
   chip、「Alt-t: shell」chip）是 app 自選的加分項、增加 user 對個別動
@@ -387,14 +367,14 @@ App 在開發過程中、會出現某些**必要但無法歸進 focus 上下文*
 
 #### 兩條 track 加起來才是完整的 VTP
 
-- **§A.0.Y 保證**：core-key 總數 ≤ 5、user 同時握得住
-- **§A.1 保證**：當前 focus 上下文裡所有能做的事、user 從 §A.1 core-key
-  入口都找得到
-- **§A.2 保證**：app 提供的所有全域動作、user 從 §A.2 core-key 入口都
-  找得到
+- **§A.0.K 保證**：core-key 語意跨 surface、跨 app 不變、user 學一次就
+  一直有效
+- **§A.1 保證**：當前 focus 上下文裡所有能做的事、user 從 `Space` 入口
+  都找得到
+- **§A.2 保證**：app 提供的所有全域動作、user 從 `?` 入口都找得到
 
-三條合起來、就達成「沒看過 README 的 user 在任何 surface、學 ≤ 5 個 key
-就能完成 app 支援的所有動作」這個 VTP 承諾。
+三條合起來、就達成「沒看過 README 的 user 在任何 surface、都能完成 app
+支援的所有動作」這個 VTP 承諾。
 
 衍生規則：
 
@@ -568,21 +548,23 @@ fallback 最不容易掉 box** 的子集。具體哪個子集屬於 icon font �
 
 ## 4. 互動 (Interaction)
 
-### 4.1 Core key set 跨全 app 一致
+### 4.1 Core key 語意跨全 app 一致
 
-選定一組 core key（總數 ≤ 5、見 §A.0.Y）、語意在任何 surface 都絕對不變。
-典型集合（example、非規範）：
+Core key 的**語意由 §A.0.K 規定、數量不限**。表上的鍵在任何 surface 都
+做同一件事：
 
-| 鍵 | 典型語意 | 對應條款 |
+| 鍵 | 語意 | 對應條款 |
 |---|---|---|
-| `Tab` | focus 切換 | §4.1 |
-| `Enter` | 確認 / 進入 | §4.1 |
-| `Esc` | 取消 / 退出 | §4.3 |
-| `Space` | §A.1 contextual 入口 | §A.1 |
-| `?` | §A.2 non-contextual 入口 | §A.2 |
+| `Tab` | focus 切換到下一個 surface | §A.0.K |
+| `Enter` | 確認 / 進入 | §A.0.K |
+| `Esc` | 取消 / 關閉當前最上層 | §4.3 |
+| `Space` | §A.1 contextual 入口（開 / 關） | §A.1 |
+| `?` | §A.2 non-contextual 入口（開 / 關） | §A.2 |
 
-要選哪幾個鍵、各鍵綁什麼語意、是 app 設計選擇。**絕對的部分是「選定後
-跨 surface 不變、且總數 ≤ 5」**、否則使用者基本導航就壞了、VTP 立刻破洞。
+App 可以不用到全部（單 panel app 可能不需要 `Tab`）、也可以另外指派自
+己的 core-key。**絕對的部分有兩條**：表上的鍵**語意不可改**、自訂的鍵
+**一旦選定也跨 surface 不變**。任一條破了、使用者的基本導航就壞了、VTP
+立刻破洞。
 
 ### 4.2 Letter hotkey ⊆ here-can-do-what 入口（完整性原則）
 
@@ -606,37 +588,42 @@ Non-contextual 動作（全域 toggle / settings / help 等）不適用本條 �
 們走 §A.2 的另一套手法（跨 surface 一致觸發 + 持續通道揭露）、不擠進
 入口。
 
-### 4.3 指派一個 core key 當「全 app 取消/關閉」
+### 4.3 取消 / 關閉 —— `Esc` 通殺
 
-設計者必須指派一個 core key、語意是「關閉當前最上層的可見浮層 / 取消當
-前操作」、跨 surface 不變。任何可見浮層（popup / toast / auto-dismiss
-toast 也算）按下這個 key 都必須立即關閉、使用者沒有等動畫倒數的義務。
+`Esc` 的語意由 §A.0.K 規定：「取消當前操作 / 關閉當前最上層的可見浮
+層」、跨 surface 不變。任何可見浮層（popup / toast / auto-dismiss toast
+也算）按下 `Esc` 都必須**立即關閉**、使用者沒有等動畫倒數的義務。
 
-該 key 是哪一個是設計選擇、典型例：
+**可以加 alias、但必須是完整 alias**（§A.0.K）：例如讓 `q` 也做取消、
+但它必須在**所有 surface** 都同樣有效。半套 alias（`q` 只在主面板有效、
+popup 內沒有）比不做 alias 更糟 —— user 要多學一條「哪裡可以、哪裡不
+行」的條件規則。
 
-- `Esc` — 最常見、跟多數 GUI / vim insert-mode-exit 慣例對齊
-- `q` — 帶 vim / less / man page 風格的 TUI 常用
-- 其他 — 任何 core key 都可以、只要全 app 不變
-
-重點：**一旦選定、跨 surface 絕對不變**。如果某個浮層用一個 key 取消、
-另一個浮層用別的 key 取消、就違反 §4.1 core key 跨 surface 一致、user
-必須 case-by-case 記、VTP 破洞。
+如果某個浮層用一個 key 取消、另一個浮層用別的 key 取消、就違反 §4.1
+core key 跨 surface 一致、user 必須 case-by-case 記、VTP 破洞。
 
 ### 4.4 Hotkey discoverability 標記方式
 
 若 app 在 statusbar / menu entries / popup hints 等位置揭露 letter hotkey、
 標記方式必須整個 app 一個 rule、不能混用多套。
 
-常見作法（example、非規範）：
+**一律用 bracket 包住熱鍵字元**：`[X]label`。§A.1.2 已規定 Space menu
+用這個形式、其餘揭露位置跟著一致、全 app 一套規則。
 
-| 形式 | 範例 |
+| 情境 | 形式 |
 |---|---|
-| 用 bracket 包住熱鍵字元 | `[X]label` |
-| 用 angle bracket | `<X>label` |
-| 用顏色強調熱鍵字元 | 熱鍵字元用 highlight colour、其他字元正常 |
+| 單字母 hotkey | `[r]ename`、`[D]elete` |
+| Chord（含 modifier） | `[Alt-t]erm`、`[Alt-S]ort` —— 一個 bracket、hyphen 連接 modifier 與字母 |
+| 多字元 chord | `[go]to` —— 就地 bracket |
+| 沒有 hotkey 的純 label | 不加 bracket |
 
-哪一種都行、**重點是同 app 內只能選一種**、否則使用者要學多套規則、跟
-§4.1 跨 surface 一致的精神衝突。
+**bracket 印的就是要按的那個鍵、一字不差、大小寫算數**：`[A]dd` 是
+`Shift+A`、裸的 `a` 不是這個綁定；`[t]ransfer` 與 `[T]ransfer all` 因此
+分得出來。
+
+**數字 key 一律前綴、不內嵌**：寫成 `[3] label`、不要從 label 裡把數字
+挖出來加括號。數字在 label 裡是**內容**、在 hotkey 裡是**序號**、兩者長
+得一樣但語意無關（`432hz` 會被畫成 `4[3]2hz`）。字母才適合內嵌。
 
 **Anti-pattern**：用顏色 / glyph 暗示「這個 element 是某個 hotkey 的入口」
 而不顯式標記 hotkey。顏色 / glyph convention 是 designer 內部心智、使用
@@ -712,13 +699,14 @@ hardcode、不可逆轉 §2.2 明度 z-axis 規範。
 
 ### 6.5 取消 key 通殺、auto-dismiss 也算
 
-任何可見浮層必須支援 §4.3 指派的取消 key 立即關閉、包含 auto-dismiss 的
+任何可見浮層必須支援 `Esc` 立即關閉（§4.3）、包含 auto-dismiss 的
 toast。參照 §4.3 通則。
 
 ### 6.6 Menu 浮層若分 region、cursor-first
 
 Menu 浮層**不一定要分 region** — 整體只有單一類動作時、直接列出即可、不
-需要 header。
+需要 header。（**例外：§A.1 的 Space menu 要求更強** — 它一定依作用對象
+分區、規則見 §A.1.1。本條講的是其餘 menu 浮層。）
 
 當 menu 的動作清單需要依「動作對象」分組呈現時、才適用以下規則：
 

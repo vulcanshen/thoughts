@@ -193,7 +193,7 @@ Core-key 是**跨 surface 語意絕對不變**的那組鍵。VTP **不限制 cor
 | Core-key | 語意 | 對應條款 |
 |---|---|---|
 | `Tab` | focus 切換到下一個 surface | §4.1 |
-| `Enter` | 確認 / 進入 | §4.1 |
+| `Enter` | 啟動該項目最直觀的操作、具體是什麼依 app context 而定 | §4.1 |
 | `Esc` | 取消 / 關閉當前最上層 | §4.3 |
 | `Space` | §A.1 contextual 入口 —— 開 / 關「當前 focus 能做什麼」 | §A.1 |
 | `?` | §A.2 non-contextual 入口 —— 開 / 關「app 全域能做什麼」 | §A.2 |
@@ -549,7 +549,7 @@ Core key 的**語意由 §A.0.K 規定、數量不限**。表上的鍵在任何 
 | 鍵 | 語意 | 對應條款 |
 |---|---|---|
 | `Tab` | focus 切換到下一個 surface | §A.0.K |
-| `Enter` | 確認 / 進入 | §A.0.K |
+| `Enter` | 啟動該項目最直觀的操作、具體是什麼依 app context 而定 | §A.0.K |
 | `Esc` | 取消 / 關閉當前最上層 | §4.3 |
 | `Space` | §A.1 contextual 入口（開 / 關） | §A.1 |
 | `?` | §A.2 non-contextual 入口（開 / 關） | §A.2 |
